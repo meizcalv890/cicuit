@@ -91,6 +91,14 @@ if (isPost()) {
             $user->execute([$id, 'admin']);
             $u = $user->fetch();
             if ($u) {
+                // Cegah hapus guru_wali jika ada siswa aktif yang masih dibimbing
+                if ($u['role'] === 'guru_wali') {
+                    $cek = $db->prepare("SELECT COUNT(*) FROM penugasan pn JOIN guru_wali gw ON pn.guru_wali_id = gw.id WHERE gw.user_id = ? AND pn.is_active = 1");
+                    $cek->execute([$id]);
+                    if ((int)$cek->fetchColumn() > 0) {
+                        redirect(APP_URL . '/admin/users.php?msg=guru_has_students');
+                    }
+                }
                 $db->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
                 logAdminAction($db, 'Hapus pengguna', "{$u['role']}: {$u['nama_lengkap']}");
                 redirect(APP_URL . '/admin/users.php?msg=deleted');
@@ -126,6 +134,7 @@ ob_start();
 <?php if ($msg === 'created'): ?><div class="alert alert-success">Pengguna berhasil dibuat.</div><?php endif; ?>
 <?php if ($msg === 'updated'): ?><div class="alert alert-success">Data pengguna berhasil diperbarui.</div><?php endif; ?>
 <?php if ($msg === 'deleted'): ?><div class="alert alert-success">Pengguna berhasil dihapus.</div><?php endif; ?>
+<?php if ($msg === 'guru_has_students'): ?><div class="alert alert-error">Guru Wali tidak dapat dihapus karena masih memiliki siswa aktif. Pindahkan atau lepas siswa terlebih dahulu.</div><?php endif; ?>
 <?php if ($message): ?><div class="alert alert-error"><?= e($message) ?></div><?php endif; ?>
 
 <div class="page-actions">
@@ -177,7 +186,12 @@ ob_start();
                     </td>
                     <td>
                         <a href="users.php?action=edit&id=<?= $u['id'] ?>" class="btn btn-sm btn-secondary">Edit</a>
-                        <form method="POST" style="display:inline" onsubmit="return confirm('Yakin hapus pengguna ini?')">
+                        <?php
+                        $confirmMsg = $u['role'] === 'guru_wali'
+                            ? 'PERINGATAN: Menghapus Guru Wali akan menghapus semua data bimbingan! Yakin hapus ' . e($u['nama_lengkap']) . '?'
+                            : 'Yakin hapus pengguna ' . e($u['nama_lengkap']) . '?';
+                        ?>
+                        <form method="POST" style="display:inline" onsubmit="return confirm('<?= $confirmMsg ?>')">
                             <?= csrfField() ?>
                             <input type="hidden" name="post_action" value="delete">
                             <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
