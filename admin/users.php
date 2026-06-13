@@ -196,7 +196,11 @@ ob_start();
 
 <?php if ($action === 'edit' && ($editId = (int)getInput('id'))): ?>
 <?php
-$editStmt = $db->prepare("SELECT u.*, gw.*, p.nis, p.kelas, p.jurusan, p.alamat FROM users u
+$editStmt = $db->prepare("SELECT
+    u.id, u.email, u.nama_lengkap, u.role, u.no_telepon, u.is_active,
+    gw.nip, gw.bidang_keahlian, gw.bio, gw.max_siswa,
+    p.nis, p.kelas, p.jurusan, p.alamat
+    FROM users u
     LEFT JOIN guru_wali gw ON u.id = gw.user_id
     LEFT JOIN pelajar p ON u.id = p.user_id WHERE u.id = ?");
 $editStmt->execute([$editId]);
